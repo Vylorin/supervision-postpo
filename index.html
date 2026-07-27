@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supervisión · Postpo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Helvetica Neue', Arial, sans-serif; background:#f4f1ea; color:#1c1a16; min-height:100vh; }
+  .top { border-bottom:3px solid #1c1a16; padding:22px 26px 12px; display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; }
+  .top h1 { font-size:20px; letter-spacing:.05em; }
+  .top h1 span { background:#1c1a16; color:#f4f1ea; padding:2px 8px; font-size:11px; margin-left:7px; letter-spacing:.12em; vertical-align:middle; }
+  .meta { font-size:9px; letter-spacing:.15em; color:#5c574d; text-align:right; }
+  #aviso { display:none; background:#9c2b23; color:#fff; padding:9px 26px; font-size:11px; letter-spacing:.05em; }
+  .layout { display:flex; min-height:calc(100vh - 80px); }
+  .side { width:250px; border-right:2px solid #1c1a16; padding:18px 14px; background:#efebe0; }
+  .side h2, .main h2 { font-size:10px; letter-spacing:.18em; margin-bottom:10px; }
+  .proy { padding:9px 10px; border:1px solid #ddd6c6; background:#fff; margin-bottom:7px; cursor:pointer; font-size:12px; line-height:1.4; }
+  .proy.act { border-left:4px solid #9c2b23; font-weight:bold; }
+  .proy small { display:block; color:#7a7466; font-size:9px; letter-spacing:.08em; }
+  button { background:#1c1a16; color:#f4f1ea; border:none; padding:9px 14px; font-size:10px; letter-spacing:.15em; cursor:pointer; font-family:inherit; }
+  button:hover { background:#3c382f; }
+  button.sec { background:transparent; color:#1c1a16; border:1px solid #1c1a16; }
+  button.mini { padding:4px 8px; font-size:9px; }
+  .side .kit { margin-top:20px; border-top:2px solid #1c1a16; padding-top:12px; }
+  .side .kit p { font-size:9px; color:#5c574d; line-height:1.5; margin-top:8px; letter-spacing:.03em; }
+  .main { flex:1; padding:20px 26px 60px; max-width:1000px; }
+  .tabs { display:flex; gap:6px; margin:14px 0 20px; flex-wrap:wrap; }
+  .tab { padding:8px 16px; border:1px solid #1c1a16; background:transparent; font-size:10px; letter-spacing:.15em; cursor:pointer; }
+  .tab.act { background:#1c1a16; color:#f4f1ea; }
+  .card { background:#fff; border:1px solid #ddd6c6; padding:14px 16px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+  .field label { display:block; font-size:8.5px; letter-spacing:.13em; color:#5c574d; margin-bottom:4px; text-transform:uppercase; }
+  .field input, .field select { width:100%; border:1px solid #ddd6c6; background:#fff; padding:7px 8px; font-size:13px; font-family:inherit; color:#1c1a16; outline:none; }
+  .dpick { cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; }
+  td, th { padding:7px 9px; border-bottom:1px solid #e2dccf; text-align:left; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .estado { cursor:pointer; user-select:none; }
+  .nota-in { width:100%; border:none; border-bottom:1px dashed #ddd6c6; font-family:inherit; font-size:11.5px; padding:2px 0; background:transparent; outline:none; }
+  .fila-add { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .fila-add input { flex:1; min-width:120px; border:1px solid #ddd6c6; padding:7px 8px; font-size:12px; font-family:inherit; }
+  .tag-prueba { background:#c9880a; color:#fff; font-size:8.5px; padding:2px 7px; letter-spacing:.12em; margin-left:8px; vertical-align:middle; }
+  .verdict { display:flex; border:2px solid; margin-bottom:12px; }
+  .verdict .v { color:#fff; padding:12px 15px; font-size:12px; font-weight:bold; letter-spacing:.06em; display:flex; align-items:center; white-space:nowrap; }
+  .verdict .d { padding:10px 14px; font-size:11.5px; line-height:1.55; background:#fff; flex:1; }
+  .viable { border-color:#3f7d3f; } .viable .v { background:#3f7d3f; }
+  .limite { border-color:#c9880a; } .limite .v { background:#c9880a; }
+  .noviable { border-color:#9c2b23; } .noviable .v { background:#9c2b23; }
+  .sup { background:#eee7d6; padding:9px 12px; font-size:9px; color:#5c574d; line-height:1.6; }
+  .dec-item { border-left:3px solid #9c2b23; background:#fdf6f4; padding:7px 10px; margin-bottom:6px; font-size:11.5px; }
+  .dec-item.ok { border-left-color:#3f7d3f; background:#f2f7f2; opacity:.7; }
+  .dec-item .m { color:#5c574d; font-size:9.5px; }
+  .ok-item { font-size:11.5px; padding:4px 0 4px 4px; color:#2c4a2c; }
+  #parteBox { display:none; }
+  .foot { border-top:2px solid #1c1a16; margin:30px 26px 0; padding:8px 0 20px; display:flex; justify-content:space-between; font-size:8.5px; letter-spacing:.1em; color:#5c574d; }
+  /* ---- selector de fecha propio (año→mes→día, semana de lunes, festivos en rojo) ---- */
+  #dp { display:none; position:absolute; background:#1c1a16; color:#f4f1ea; padding:12px; z-index:99;
+        box-shadow:0 8px 30px rgba(0,0,0,.45); width:238px; }
+  .dp-h { display:flex; justify-content:center; align-items:center; gap:5px; margin-bottom:8px; font-size:12px; letter-spacing:.08em; font-weight:bold; }
+  .dp-b { background:none; border:1px solid #5c574d; color:#f4f1ea; padding:1px 7px; margin:0; font-size:11px; cursor:pointer; letter-spacing:0; }
+  .dp-g { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; font-size:11px; }
+  .dp-wd { color:#b3945e; font-size:9px; letter-spacing:.08em; padding:3px 0; }
+  .dp-d { padding:5px 0; cursor:pointer; }
+  .dp-d:hover { background:#3c382f; }
+  .dp-we { color:#d9736a; }
+  .dp-f { color:#fff; background:#9c2b23; border-radius:3px; }
+  .dp-x { margin-top:8px; text-align:center; }
+  .dp-x button { padding:4px 12px; font-size:9px; letter-spacing:.12em; margin:0; }
+  /* ---- candado ---- */
+  #lock { position:fixed; inset:0; background:#1c1a16; color:#f4f1ea; display:none; z-index:200;
+          align-items:center; justify-content:center; text-align:center; }
+  #lock .caja { max-width:360px; padding:20px; }
+  #lock h1 { font-size:18px; letter-spacing:.08em; margin-bottom:8px; }
+  #lock p { font-size:10px; color:#8a857a; line-height:1.6; margin-bottom:14px; letter-spacing:.04em; }
+  #lock input { width:100%; padding:10px; font-size:14px; font-family:inherit; border:1px solid #5c574d; background:#f4f1ea; text-align:center; margin-bottom:10px; }
+  @media print {
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    body { background:#f4f1ea !important; }
+    .top, .side, .tabs, .foot, #aviso, #dp, #lock, .noprint, .main > :not(#parteBox) { display:none !important; }
+    .layout { display:block; } .main { padding:16px; max-width:none; }
+    #parteBox { display:block !important; }
+  }
+</style>
+</head>
+<body>
+<div id="lock"><div class="caja">
+  <h1>SUPERVISIÓN · POSTPO</h1>
+  <p>CANDADO ACTIVADO — los datos de esta app están cifrados en este navegador.<br>Sin la contraseña, lo guardado es ruido ilegible (también para nosotros).</p>
+  <input type="password" id="lockpass" placeholder="contraseña maestra" onkeydown="if(event.key==='Enter')abrir()">
+  <button onclick="abrir()">ENTRAR</button>
+  <p id="lockmsg" style="color:#d9736a"></p>
+  <p>¿Contraseña olvidada? No hay puerta trasera: importa tu última copia exportada (tu red de rescate).</p>
+</div></div>
+<div class="top">
+  <h1>SUPERVISIÓN <span>POSTPO</span> <span>V0.2</span></h1>
+  <div class="meta">HERRAMIENTA DE EDU ARRUGA · LOCAL-FIRST: TUS DATOS VIVEN EN ESTE NAVEGADOR<br>CANDADO DE CIFRADO DISPONIBLE · ROLES, NO PERSONAS (REGLA 18)</div>
+</div>
+<div id="aviso"></div>
+<div class="layout">
+  <div class="side">
+    <h2>PROYECTOS</h2>
+    <div id="lista"></div>
+    <button class="sec" style="width:100%" onclick="nuevoProyecto()">+ NUEVO PROYECTO</button>
+    <div class="kit noprint">
+      <h2>KIT DE COPIAS (N5)</h2>
+      <button style="width:100%" onclick="exportar()">EXPORTAR COPIA (.json)</button>
+      <p><label style="cursor:pointer;text-decoration:underline">importar copia<input type="file" accept=".json" style="display:none" onchange="importar(this)"></label></p>
+      <p id="ultExp"></p>
+      <p>El export va SIN cifrar a propósito: es tu red de rescate si olvidas la contraseña. Trátalo como un documento confidencial (regla 18).</p>
+    </div>
+    <div class="kit noprint">
+      <h2>CANDADO (CIFRADO)</h2>
+      <div id="candadoBox"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div id="cab"></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="cont"></div>
+    <div id="parteBox"></div>
+  </div>
+</div>
+<div class="foot"><div>NIVEL 4-5 · V0.2 — CANDADO DE CIFRADO REAL · FICHA DE EQUIPO · CALENDARIO PROPIO · PARTE CON EL LOOK DE LA CASA</div><div>SUPERVISION_POSTPO_V02</div></div>
+<div id="dp"></div>
+<datalist id="cargos">
+  <option>Director/a</option><option>Productor/a</option><option>Productor/a Ejecutivo/a</option>
+  <option>Supervisor/a de postproducción</option><option>Coordinador/a de postproducción</option>
+  <option>Supervisor/a de VFX</option><option>VFX Artist</option><option>Editor/a</option>
+  <option>Ayudante de edición</option><option>Auxiliar de edición</option><option>VFX Editor/a</option>
+  <option>Colorista</option><option>Productor/a de VFX</option>
+</datalist>
+<datalist id="plataformas">
+  <option>Netflix</option><option>Prime Video</option><option>Apple TV+</option><option>Disney+</option>
+  <option>Max</option><option>Movistar Plus+</option><option>Filmin</option><option>RTVE</option>
+  <option>TV3</option><option>Cadena autonómica</option><option>Sin plataforma</option>
+</datalist>
+
+<script>
+/* ================= MODELO (Auditor V8: vara reactiva + festivos ESP·CAT·BCN) ================= */
+const DIA = 86400000;
+const fmt = d => d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+const add = (d, n) => new Date(d.getTime() + n*DIA);
+const MODELO = {
+  serie:   { lockDelay: 33, firstMixGap: 40, cierre: 29 },
+  tvmovie: { lockDelay: 28, firstMixGap: 28, cierre: 21 },
+  cine:    { lockDelay: 75, firstMixGap: 45, cierre: 45 },
+  doc:     { lockDelay: 90, firstMixGap: 35, cierre: 30 }
+};
+function easterD(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+g=Math.floor((b-f+1)/3),hh=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-hh-k)%7,
+m=Math.floor((a+11*hh+22*l)/451),mo=Math.floor((hh+l-7*m+114)/31),da=((hh+l-7*m+114)%31)+1;
+return new Date(y,mo-1,da);}
+const FEST_CACHE = {};
+function festivosY(y){
+  if (FEST_CACHE[y]) return FEST_CACHE[y];
+  const E = easterD(y), s = new Set();
+  const K = d => d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  [[1,1],[1,6],[5,1],[6,24],[8,15],[9,11],[9,24],[10,12],[11,1],[12,6],[12,8],[12,25],[12,26]]
+    .forEach(([m,d]) => s.add(y+'-'+m+'-'+d));
+  s.add(K(add(E,-2))); s.add(K(add(E,1))); s.add(K(add(E,50)));
+  FEST_CACHE[y] = s; return s;
+}
+const esFestivo = d => festivosY(d.getFullYear()).has(d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate());
+const esLaborable = d => d.getDay() !== 0 && d.getDay() !== 6 && !esFestivo(d);
+function aLaborable(d){ let x = new Date(d); while (!esLaborable(x)) x = add(x, 1); return x; }
+function festivosEnTramo(a, b){ let n = 0, x = add(a, 1); while (x <= b){ if (x.getDay() !== 0 && x.getDay() !== 6 && esFestivo(x)) n++; x = add(x, 1); } return n; }
+const mixDias = (f, dur) => f === 'cine' ? 15 : f === 'doc' ? 10 : dur <= 35 ? 4 : dur <= 50 ? 5 : dur <= 65 ? 6 : 8;
+function cascada(p){
+  const M = MODELO[p.formato], wrap = new Date(p.wrap), target = new Date(p.objetivo);
+  if (!M || isNaN(wrap) || isNaN(target)) return null;
+  const eps = Math.max(1, +p.eps || 1), dur = +p.dur || 30, mont = +p.mont || 2, salas = +p.salas || 1;
+  const vfxN = Math.max(0, +p.vfx || 0);
+  const esST = (p.formato === 'serie' || p.formato === 'tvmovie');
+  const durAdj  = esST ? (dur <= 35 ? 0 : dur <= 50 ? 5 : dur <= 65 ? 8 : 12) : 0;
+  const montAdj = mont === 1 ? 7 : (mont >= 3 ? -4 : 0);
+  const gapAdj  = esST ? (dur <= 35 ? 0 : dur <= 50 ? 4 : dur <= 65 ? 7 : 10) : 0;
+  const epsAdj  = (p.formato === 'serie' && eps > 6) ? (eps - 6) * 2 : 0;
+  const V = { lockDelay: M.lockDelay + durAdj + montAdj, firstMixGap: M.firstMixGap + gapAdj, cierre: M.cierre + epsAdj };
+  const cadencia = mont >= 3 ? 5 : (mont >= 2 ? 7 : 12);
+  const lockIn = p.lock ? new Date(p.lock) : null;
+  const firstLock = (lockIn && !isNaN(lockIn)) ? lockIn : add(wrap, V.lockDelay);
+  const lastLock = add(firstLock, (eps-1)*cadencia);
+  const mD = mixDias(p.formato, dur);
+  const slot = Math.max(7, Math.ceil(mD/5)*7);
+  const firstMix = add(firstLock, V.firstMixGap);
+  const lastMixStart = add(firstMix, Math.floor((eps-1)/salas)*slot);
+  let lastMixEnd = add(lastMixStart, mD-1);
+  const ritmo = { limpieza:30, medio:15, cgi:6 }[p.vfxtipo || 'medio'];
+  let vfxEnd = null, vfxRetraso = 0;
+  if (vfxN > 0){
+    const vfxSem = Math.max(2, Math.ceil(vfxN / ritmo));
+    vfxEnd = add(firstLock, 7 + vfxSem*7);
+    const limite = add(lastMixStart, -7);
+    if (vfxEnd > limite){ vfxRetraso = Math.round((vfxEnd - limite)/DIA); lastMixEnd = add(lastMixEnd, vfxRetraso); }
+  }
+  let fin = add(lastMixEnd, V.cierre);
+  const nFest = festivosEnTramo(wrap, fin);
+  fin = aLaborable(add(fin, nFest));
+  const margen = Math.round((target - fin)/DIA);
+  return { firstLock: aLaborable(firstLock), lastLock: aLaborable(lastLock), firstMix: aLaborable(firstMix),
+           lastMixEnd: aLaborable(lastMixEnd), fin, vfxEnd: vfxEnd ? aLaborable(vfxEnd) : null,
+           vfxRetraso, nFest, margen, target, eps };
+}
+/* ================= CANDADO: cifrado real (WebCrypto AES-GCM + PBKDF2) ================= */
+const CRIPTO = !!(window.crypto && crypto.subtle);
+let PASSMEM = null;
+async function clave(pass, salt){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:150000, hash:'SHA-256' }, km,
+    { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+const b64 = a => btoa(String.fromCharCode(...new Uint8Array(a)));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function cifrar(obj, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, await clave(pass, salt),
+    new TextEncoder().encode(JSON.stringify(obj)));
+  return { enc:true, salt:b64(salt), iv:b64(iv), ct:b64(ct) };
+}
+async function descifrar(pay, pass){
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(pay.iv) },
+    await clave(pass, unb64(pay.salt)), unb64(pay.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+/* ================= ESTADO ================= */
+const CLAVE = 'supervision_postpo_v02';
+const store = (() => { try { localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return localStorage; } catch(e){ return null; } })();
+const DEPTS = ['EDITORIAL','VFX','SONIDO','MÚSICA','COLOR','DELIVERY'];
+const ROJAS_DEF = [
+  ['entrega', 'Fecha de entrega comprometida'],
+  ['presupuesto', 'Techo de presupuesto'],
+  ['cadencia', 'Cadencia de locks (máx. 1 sem deslizamiento)'],
+  ['qc', 'QC contratado (1 + 1 + 1)'],
+];
+function proyectoDemo(){
+  return { id:'demo-mlsng', nombre:'MALASANG', codigo:'MLSNG_ARR_SER', prueba:true,
+    formato:'serie', eps:6, dur:30, wrap:'2027-02-26', lock:'', objetivo:'2027-04-30',
+    mont:2, salas:1, vfx:92, vfxtipo:'medio',
+    productora:'Producciones de Prueba SL', plataforma:'Netflix', productores:'(prueba)',
+    directores:'(prueba)', superpost:'E. Arruga', coordpost:'(prueba)',
+    semaforos:{
+      'EDITORIAL':{e:'ambar',n:'Lock 104 en riesgo: notas de cadena sin llegar.'},
+      'VFX':{e:'ambar',n:'Paquete del 101 con 2 días de retraso del vendor.'},
+      'SONIDO':{e:'verde',n:'DX 101 entregado; ADR 102 pendiente de convocatoria.'},
+      'MÚSICA':{e:'verde',n:'Maquetas del 101 aprobadas a la primera.'},
+      'COLOR':{e:'verde',n:'Arranca con el 101 el lunes 26.'},
+      'DELIVERY':{e:'verde',n:'Sin actividad; primera mezcla a 3 semanas.'} },
+    rojas:{
+      'entrega':{e:'verde',n:'Sin días perdidos en la ruta crítica.'},
+      'presupuesto':{e:'rojo',n:'CRUZADA: −8.500 € comunicados; sin decisión del productor.'},
+      'cadencia':{e:'ambar',n:'El 104 la tensiona esta semana.'},
+      'qc':{e:'verde',n:'Ninguna ronda consumida.'} },
+    bien:['DX del 101 entregado un día antes.','Maquetas de música a la primera: cero retrabajos.','LTO y checksums al día con restauración verificada.'],
+    decisiones:[
+      {t:'Reclamar HOY las notas de cadena del 104.', r:'Productor/a Ejecutivo/a', f:'2027-04-21', ok:false},
+      {t:'Decidir el descuadre de −8.500 €.', r:'Productor/a', f:'2027-04-23', ok:false},
+      {t:'Confirmar convocatoria ADR (rol: reparto ep. 102).', r:'Coordinador/a de postproducción', f:'2027-04-30', ok:false} ] };
+}
+let S = null;
+function arrancar(){
+  let raw = store ? store.getItem(CLAVE) : null;
+  let pay = null;
+  if (raw){ try { pay = JSON.parse(raw); } catch(e){} }
+  if (pay && pay.enc){
+    if (!CRIPTO){ document.getElementById('aviso').style.display='block';
+      document.getElementById('aviso').innerHTML='<b>CANDADO PRESENTE</b> pero este visor no soporta cifrado. Abre la app en tu navegador.'; return; }
+    const L = document.getElementById('lock'); L.style.display = 'flex';
+    document.getElementById('lockpass').focus();
+    window._pay = pay;
+    return;
+  }
+  S = pay || null;
+  if (!S){ S = { proyectos:[proyectoDemo()], activo:'demo-mlsng', ultExp:null }; guardar(); }
+  pintar();
+}
+async function abrir(){
+  const pass = document.getElementById('lockpass').value;
+  try {
+    S = await descifrar(window._pay, pass);
+    PASSMEM = pass;
+    document.getElementById('lock').style.display = 'none';
+    pintar();
+  } catch(e){ document.getElementById('lockmsg').textContent = 'Contraseña incorrecta.'; }
+}
+function guardar(){
+  if (!store){ pintaAviso(); return; }
+  if (PASSMEM && CRIPTO){ cifrar(S, PASSMEM).then(p => store.setItem(CLAVE, JSON.stringify(p))); }
+  else store.setItem(CLAVE, JSON.stringify(S));
+  pintaAviso();
+}
+function pintaAviso(){
+  const el = document.getElementById('aviso');
+  if (!store){ el.style.display='block'; el.innerHTML='<b>VISTA SIN GUARDADO:</b> este visor no almacena datos. Descarga la app y ábrela en tu navegador (o en tu URL publicada): allí SÍ persisten y el candado funciona.'; ponCandado(); return; }
+  const dias = S && S.ultExp ? Math.floor((Date.now() - S.ultExp)/DIA) : null;
+  if (dias === null){ el.style.display='block'; el.innerHTML='<b>SIN COPIA DE SEGURIDAD:</b> aún no has exportado nunca. Regla 18: export semanal, dos ubicaciones.'; }
+  else if (dias > 7){ el.style.display='block'; el.innerHTML='<b>COPIA ATRASADA:</b> tu último export fue hace ' + dias + ' días. Regla 18: semanal.'; }
+  else el.style.display='none';
+  document.getElementById('ultExp').textContent = S && S.ultExp ? ('Último export: ' + (dias===0?'hoy':'hace '+dias+' día(s)')) : 'Último export: nunca';
+  ponCandado();
+}
+function ponCandado(){
+  const box = document.getElementById('candadoBox');
+  if (!CRIPTO || !store){ box.innerHTML = '<p style="font-size:9px;color:#5c574d">No disponible en este visor; en tu navegador sí.</p>'; return; }
+  box.innerHTML = PASSMEM
+    ? '<p style="font-size:9px;color:#2c4a2c;letter-spacing:.05em">🔒 ACTIVADO — datos cifrados en disco.</p><button class="sec mini" onclick="cambiarPass()">cambiar contraseña</button> <button class="sec mini" onclick="quitarPass()">quitar</button>'
+    : '<button style="width:100%" onclick="activarPass()">ACTIVAR CANDADO</button><p style="font-size:9px;color:#5c574d;margin-top:6px">Cifra tus datos con contraseña maestra (AES real). Imprescindible antes de meter proyectos reales.</p>';
+}
+function activarPass(){
+  const a = prompt('Crea tu contraseña maestra (no hay recuperación: tu red de rescate son los exports):'); if (!a) return;
+  const b = prompt('Repítela:'); if (a !== b){ alert('No coinciden.'); return; }
+  PASSMEM = a; guardar(); alert('Candado activado. A partir de ahora, la app pedirá la contraseña al abrir.');
+}
+function cambiarPass(){ const a = prompt('Nueva contraseña:'); if (!a) return; const b = prompt('Repítela:'); if (a!==b){ alert('No coinciden.'); return; } PASSMEM = a; guardar(); }
+function quitarPass(){ if (confirm('¿Quitar el candado? Los datos quedarán SIN cifrar en este navegador.')){ PASSMEM = null; guardar(); } }
+/* ================= SELECTOR DE FECHA PROPIO ================= */
+const DP_M = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+let dpT = null, dpY = 2027, dpM = 0, dpSave = null;
+function openDP(id, saveFn){
+  dpT = document.getElementById(id); dpSave = saveFn || null;
+  const d = dpT.dataset.iso ? new Date(dpT.dataset.iso) : new Date(2027, 0, 1);
+  dpY = d.getFullYear(); dpM = d.getMonth();
+  renderDP();
+  const dp = document.getElementById('dp'), r = dpT.getBoundingClientRect();
+  dp.style.left = (r.left + window.scrollX) + 'px';
+  dp.style.top = (r.bottom + window.scrollY + 4) + 'px';
+  dp.style.display = 'block';
+}
+function moveDP(dy, dm){ dpM += dm; dpY += dy + Math.floor(dpM/12); dpM = ((dpM%12)+12)%12; renderDP(); }
+function renderDP(){
+  let g = '<div class="dp-h"><button class="dp-b" onclick="moveDP(-1,0)">◀</button>' + dpY +
+          '<button class="dp-b" onclick="moveDP(1,0)">▶</button>&nbsp;·&nbsp;' +
+          '<button class="dp-b" onclick="moveDP(0,-1)">◀</button>' + DP_M[dpM] +
+          '<button class="dp-b" onclick="moveDP(0,1)">▶</button></div><div class="dp-g">';
+  for (const w of ['L','M','X','J','V','S','D']) g += '<div class="dp-wd">' + w + '</div>';
+  const first = (new Date(dpY, dpM, 1).getDay() + 6) % 7;
+  const dias = new Date(dpY, dpM + 1, 0).getDate();
+  for (let i = 0; i < first; i++) g += '<div></div>';
+  for (let d = 1; d <= dias; d++){
+    const fecha = new Date(dpY, dpM, d);
+    const finde = fecha.getDay() === 0 || fecha.getDay() === 6;
+    const cls = esFestivo(fecha) ? 'dp-d dp-f' : (finde ? 'dp-d dp-we' : 'dp-d');
+    g += '<div class="' + cls + '" onclick="pickDP(' + d + ')">' + d + '</div>';
+  }
+  g += '</div><div class="dp-x"><button onclick="clearDP()">BORRAR</button></div><div style="margin-top:6px;font-size:8px;color:#8a857a;letter-spacing:.06em;text-align:center">ROJO = FESTIVO ESP·CAT·BCN · CLARO = FIN DE SEMANA</div>';
+  document.getElementById('dp').innerHTML = g;
+}
+function pickDP(d){
+  const mm = String(dpM+1).padStart(2,'0'), dd = String(d).padStart(2,'0');
+  const iso = dpY + '-' + mm + '-' + dd;
+  dpT.value = dpY + '/' + mm + '/' + dd; dpT.dataset.iso = iso;
+  if (dpSave) dpSave(iso);
+  closeDP();
+}
+function clearDP(){ dpT.value = ''; delete dpT.dataset.iso; if (dpSave) dpSave(''); closeDP(); }
+function closeDP(){ document.getElementById('dp').style.display = 'none'; }
+document.addEventListener('mousedown', e => {
+  if (!e.target.closest('#dp') && !e.target.classList.contains('dpick')) closeDP();
+});
+/* ================= UI ================= */
+let tab = 'datos';
+const $ = id => document.getElementById(id);
+const act = () => S.proyectos.find(p => p.id === S.activo) || S.proyectos[0];
+function pintar(){
+  const p = act();
+  $('lista').innerHTML = S.proyectos.map(x =>
+    `<div class="proy ${x.id===S.activo?'act':''}" onclick="S.activo='${x.id}';tab='datos';guardar();pintar()">${x.nombre}${x.prueba?'<span class="tag-prueba">PRUEBA</span>':''}<small>${x.codigo || ''}</small></div>`).join('');
+  if (!p){ $('cab').innerHTML = '<p style="font-size:12px">Crea tu primer proyecto.</p>'; $('tabs').innerHTML=''; $('cont').innerHTML=''; pintaAviso(); return; }
+  $('cab').innerHTML = `<h2 style="font-size:15px;letter-spacing:.06em">${p.nombre} ${p.prueba?'<span class="tag-prueba">DATOS DE PRUEBA</span>':''}
+    <button class="mini sec noprint" style="margin-left:10px" onclick="borrarProyecto()">borrar</button></h2>`;
+  $('tabs').innerHTML = ['datos','cascada','seguimiento','parte'].map(t =>
+    `<div class="tab ${tab===t?'act':''}" onclick="tab='${t}';pintar()">${t.toUpperCase()}</div>`).join('');
+  if (tab==='datos') pintaDatos(p);
+  if (tab==='cascada') pintaCascada(p);
+  if (tab==='seguimiento') pintaSeg(p);
+  if (tab==='parte') pintaParte(p);
+  pintaAviso();
+}
+function campo(p, k, label, tipo, opciones, lista){
+  if (tipo === 'select') return `<div class="field"><label>${label}</label><select onchange="act().${k}=this.value;guardar();pintar()">${opciones.map(o=>`<option value="${o[0]}" ${p[k]==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;
+  if (tipo === 'fecha'){
+    const iso = p[k] || '';
+    const visible = iso ? iso.replace(/-/g,'/') : '';
+    return `<div class="field"><label>${label}</label><input type="text" readonly placeholder="AAAA/MM/DD" class="dpick" id="f_${k}" value="${visible}" data-iso="${iso}" onclick="openDP('f_${k}', v => { act().${k}=v; guardar(); pintar(); })"></div>`;
+  }
+  return `<div class="field"><label>${label}</label><input type="${tipo}" ${lista?`list="${lista}"`:''} value="${(p[k] ?? '').toString().replace(/"/g,'&quot;')}" onchange="act().${k}=this.value;guardar()"></div>`;
+}
+function pintaDatos(p){
+  $('cont').innerHTML = `
+  <div class="card"><h2>PRODUCCIÓN</h2><div class="grid">
+    ${campo(p,'nombre','Nombre del proyecto','text')}
+    ${campo(p,'codigo','Código (nomenclatura)','text')}
+    ${campo(p,'productora','Productora','text')}
+    ${campo(p,'plataforma','Plataforma / cadena','text',null,'plataformas')}
+    ${campo(p,'productores','Productor/es','text')}
+    ${campo(p,'directores','Director/es','text')}
+    ${campo(p,'superpost','Supervisor/a de postpo','text')}
+    ${campo(p,'coordpost','Coordinador/a de postpo','text')}
+  </div></div>
+  <div class="card"><h2>ENCARGO</h2><div class="grid">
+    ${campo(p,'formato','Formato','select',[['serie','Serie'],['tvmovie','TV movie'],['cine','Cine'],['doc','Documental']])}
+    ${campo(p,'eps','Nº episodios','number')}
+    ${campo(p,'dur','Duración (min)','number')}
+    ${campo(p,'wrap','Fin de rodaje','fecha')}
+    ${campo(p,'lock','Lock pactado (opcional)','fecha')}
+    ${campo(p,'objetivo','Objetivo de entrega','fecha')}
+    ${campo(p,'mont','Montadores','number')}
+    ${campo(p,'salas','Salas de mezcla','number')}
+    ${campo(p,'vfx','Planos VFX','number')}
+    ${campo(p,'vfxtipo','Complejidad VFX','select',[['limpieza','Limpiezas/2D'],['medio','Media'],['cgi','CGI pesado']])}
+  </div></div>
+  <div class="sup">Regla 18: nombres profesionales sí (como en unos títulos de crédito) — teléfonos, correos personales y sueldos con nombre, no. Los datos viven en este navegador${PASSMEM?', cifrados con tu candado':''}.</div>`;
+}
+function pintaCascada(p){
+  const c = cascada(p);
+  if (!c){ $('cont').innerHTML = '<div class="card">Faltan fechas en DATOS (fin de rodaje y objetivo).</div>'; return; }
+  const cls = c.margen >= 7 ? 'viable' : c.margen >= 0 ? 'limite' : 'noviable';
+  const tag = c.margen >= 7 ? 'VIABLE' : c.margen >= 0 ? 'AL LÍMITE' : 'NO VIABLE';
+  const txt = c.margen >= 0 ? `Colchón de <b>${c.margen} días</b> sobre el objetivo ${fmt(c.target)}.`
+    : `Faltan <b>${-c.margen} días</b>: entrega estimada <b>${fmt(c.fin)}</b> para un objetivo de ${fmt(c.target)}.`;
+  $('cont').innerHTML = `<div class="verdict ${cls}"><div class="v">${tag}</div><div class="d">${txt}</div></div>
+  <div class="card"><table>
+    <tr><td>${c.eps>1?'Primer picture lock':'Picture lock'}</td><td>${fmt(c.firstLock)}</td></tr>
+    ${c.eps>1?`<tr><td>Último picture lock</td><td>${fmt(c.lastLock)}</td></tr>`:''}
+    ${c.vfxEnd?`<tr><td>Fin de VFX estimado${c.vfxRetraso?' — ¡marcan el ritmo! (+'+c.vfxRetraso+' días)':''}</td><td>${fmt(c.vfxEnd)}</td></tr>`:''}
+    <tr><td>Primera mezcla</td><td>${fmt(c.firstMix)}</td></tr>
+    <tr><td>Última mezcla</td><td>${fmt(c.lastMixEnd)}</td></tr>
+    <tr><td><b>Entrega completa + archivo</b></td><td><b>${fmt(c.fin)}</b></td></tr>
+  </table></div>
+  <div class="sup">Modelo del Auditor V8: vara reactiva anclada + festivos ESP·CAT·BCN descontados (${c.nFest} en este tramo) + hitos en día laborable.</div>`;
+}
+const CICLO = { verde:'ambar', ambar:'rojo', rojo:'verde' };
+const COLPUNTO = { verde:'#3f7d3f', ambar:'#c9880a', rojo:'#9c2b23' };
+function pintaSeg(p){
+  p.semaforos = p.semaforos || {}; p.rojas = p.rojas || {}; p.bien = p.bien || []; p.decisiones = p.decisiones || [];
+  DEPTS.forEach(d => p.semaforos[d] = p.semaforos[d] || { e:'verde', n:'' });
+  ROJAS_DEF.forEach(([k]) => p.rojas[k] = p.rojas[k] || { e:'verde', n:'' });
+  $('cont').innerHTML = `
+  <div class="card"><h2>SEMÁFOROS POR DEPARTAMENTO <span style="font-weight:normal;letter-spacing:0;color:#7a7466">(clic en el punto para cambiar)</span></h2>
+  <table>${DEPTS.map(d => `<tr>
+    <td style="width:110px"><span class="estado" onclick="act().semaforos['${d}'].e=CICLO[act().semaforos['${d}'].e];guardar();pintar()"><span class="dot" style="background:${COLPUNTO[p.semaforos[d].e]}"></span><b style="font-size:10px;letter-spacing:.1em">${d}</b></span></td>
+    <td><input class="nota-in" value="${(p.semaforos[d].n||'').replace(/"/g,'&quot;')}" placeholder="nota…" onchange="act().semaforos['${d}'].n=this.value;guardar()"></td></tr>`).join('')}</table></div>
+  <div class="card"><h2>LÍNEAS ROJAS</h2>
+  <table>${ROJAS_DEF.map(([k,nom]) => `<tr>
+    <td style="width:280px"><span class="estado" onclick="act().rojas['${k}'].e=CICLO[act().rojas['${k}'].e];guardar();pintar()"><span class="dot" style="background:${COLPUNTO[p.rojas[k].e]}"></span>${nom}</span></td>
+    <td><input class="nota-in" value="${(p.rojas[k].n||'').replace(/"/g,'&quot;')}" placeholder="estado…" onchange="act().rojas['${k}'].n=this.value;guardar()"></td></tr>`).join('')}</table></div>
+  <div class="card"><h2>LO QUE VA BIEN</h2>
+  ${p.bien.map((b,i) => `<div class="ok-item">✓ ${b} <button class="mini sec noprint" onclick="act().bien.splice(${i},1);guardar();pintar()">×</button></div>`).join('')}
+  <div class="fila-add noprint"><input id="nb" placeholder="algo que va bien…"><button class="mini" onclick="if($('nb').value){act().bien.push($('nb').value);guardar();pintar()}">AÑADIR</button></div></div>
+  <div class="card"><h2>DECISIONES QUE NECESITAN AL PRODUCTOR</h2>
+  ${p.decisiones.map((d,i) => `<div class="dec-item ${d.ok?'ok':''}"><b>${d.t}</b> <button class="mini sec noprint" onclick="act().decisiones[${i}].ok=!act().decisiones[${i}].ok;guardar();pintar()">${d.ok?'reabrir':'resuelta'}</button> <button class="mini sec noprint" onclick="act().decisiones.splice(${i},1);guardar();pintar()">×</button><div class="m">Responsable: ${d.r || '—'} · Fecha límite: ${d.f ? d.f.replace(/-/g,'/') : '—'}</div></div>`).join('')}
+  <div class="fila-add noprint"><input id="nd" placeholder="decisión…"><input id="nr" list="cargos" placeholder="responsable (cargo)" style="max-width:200px"><input id="nf" type="text" readonly class="dpick" placeholder="AAAA/MM/DD" style="max-width:130px" onclick="openDP('nf')"><button class="mini" onclick="if($('nd').value){act().decisiones.push({t:$('nd').value,r:$('nr').value,f:$('nf').dataset.iso||'',ok:false});guardar();pintar()}">AÑADIR</button></div>
+  <p style="font-size:9px;color:#5c574d;margin-top:6px">Responsable por CARGO, no por nombre (regla 18) — la lista te los sugiere.</p></div>`;
+}
+function pintaParte(p){
+  $('cont').innerHTML = `<div class="card noprint"><h2>PARTE SEMANAL (INF)</h2>
+  <p style="font-size:12px;line-height:1.6;margin:8px 0">Genera el parte oficial de 5 bloques con el estado actual de <b>${p.nombre}</b> — mismo look que la app, colores incluidos. Se abre el diálogo de imprimir: elige «Guardar como PDF». Nombre sugerido: <b>${(p.codigo||'PROY')}_INF_${hoyC()}_V00</b>.</p>
+  <button onclick="generarParte()">GENERAR PARTE (PDF)</button></div>`;
+}
+function hoyC(){ const t = new Date(); return t.getFullYear() + String(t.getMonth()+1).padStart(2,'0') + String(t.getDate()).padStart(2,'0'); }
+function generarParte(){
+  const p = act(), c = cascada(p);
+  const semana = (d => { const j = new Date(d.getFullYear(),0,1); return Math.ceil(((d-j)/DIA + j.getDay()+1)/7); })(new Date());
+  const h2 = t => `<h2 style="font-size:10px;letter-spacing:.16em;margin:14px 0 8px">${t}</h2>`;
+  $('parteBox').innerHTML = `
+  <div style="border-bottom:3px solid #1c1a16;padding-bottom:8px;display:flex;justify-content:space-between;align-items:baseline">
+    <h1 style="font-size:19px;letter-spacing:.05em">PARTE SEMANAL <span style="background:#1c1a16;color:#f4f1ea;padding:2px 7px;font-size:11px;letter-spacing:.1em">${p.nombre}</span></h1>
+    <div style="font-size:8.5px;letter-spacing:.13em;color:#5c574d;text-align:right">SEMANA ${semana} · ${fmt(new Date())}<br>${p.productora||''}${p.plataforma?' · '+p.plataforma:''}${p.prueba?' · DATOS DE PRUEBA':''}</div></div>
+  ${c ? `<div class="verdict ${c.margen>=7?'viable':c.margen>=0?'limite':'noviable'}" style="margin-top:12px"><div class="v">${c.margen>=7?'VIABLE':c.margen>=0?'AL LÍMITE':'NO VIABLE'}</div><div class="d">Entrega completa estimada <b>${fmt(c.fin)}</b> · ${c.margen>=0?'colchón de '+c.margen+' días':'faltan '+(-c.margen)+' días'} sobre el objetivo ${fmt(c.target)}.</div></div>` : ''}
+  ${h2('SEMÁFOROS POR DEPARTAMENTO')}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${DEPTS.map(d => `<div class="card" style="margin:0;padding:7px 10px;font-size:10.5px"><span class="dot" style="background:${COLPUNTO[p.semaforos[d].e]}"></span><b style="letter-spacing:.08em">${d}</b> ${p.semaforos[d].n||''}</div>`).join('')}</div>
+  ${h2('LÍNEAS ROJAS')}
+  <div class="card" style="padding:4px 10px"><table>${ROJAS_DEF.map(([k,nom]) => `<tr><td style="font-weight:bold;font-size:10px;width:250px">${nom}</td><td style="font-size:10.5px"><span class="dot" style="background:${COLPUNTO[p.rojas[k].e]}"></span>${p.rojas[k].n||'—'}</td></tr>`).join('')}</table></div>
+  ${h2('HITOS Y FECHAS CLAVE')}
+  ${c ? `<div class="card" style="padding:4px 10px"><table>
+    <tr><td style="width:250px;font-weight:bold;font-size:10px">${c.eps>1?'Último picture lock':'Picture lock'}</td><td style="font-size:10.5px">${fmt(c.lastLock)}</td></tr>
+    <tr><td style="font-weight:bold;font-size:10px">Última mezcla</td><td style="font-size:10.5px">${fmt(c.lastMixEnd)}</td></tr>
+    <tr><td style="font-weight:bold;font-size:10px">Entrega completa + archivo</td><td style="font-size:10.5px"><b>${fmt(c.fin)}</b></td></tr></table></div>` : ''}
+  ${h2('LO QUE VA BIEN')}
+  <div class="card" style="padding:8px 12px">${(p.bien||[]).map(b => `<div class="ok-item">✓ ${b}</div>`).join('') || '—'}</div>
+  ${h2('DECISIONES QUE NECESITAN AL PRODUCTOR')}
+  ${(p.decisiones||[]).filter(d=>!d.ok).map((d,i) => `<div class="dec-item"><b>${i+1}. ${d.t}</b><div class="m">Responsable: ${d.r||'—'} · Fecha límite: ${d.f?d.f.replace(/-/g,'/'):'—'}</div></div>`).join('') || '<div class="card" style="padding:8px 12px">Ninguna pendiente.</div>'}
+  <div style="margin-top:14px;border-top:2px solid #1c1a16;padding-top:6px;display:flex;justify-content:space-between;font-size:8px;letter-spacing:.09em;color:#5c574d"><div>GENERADO POR SUPERVISIÓN POSTPO V0.2 · ${p.prueba?'DATOS DE PRUEBA':'CONFIDENCIAL'}</div><div>${(p.codigo||'PROY')}_INF_${hoyC()}_V00</div></div>`;
+  const t0 = document.title; document.title = (p.codigo||'PROY') + '_INF_' + hoyC() + '_V00';
+  window.print(); document.title = t0;
+}
+/* ================= CRUD y COPIAS ================= */
+function nuevoProyecto(){
+  const n = prompt('Nombre del proyecto:'); if (!n) return;
+  const id = 'p' + Math.random().toString(36).slice(2,9);
+  S.proyectos.push({ id, nombre:n, codigo:'', prueba:false, formato:'serie', eps:6, dur:30, wrap:'', lock:'', objetivo:'', mont:2, salas:1, vfx:0, vfxtipo:'medio', productora:'', plataforma:'', productores:'', directores:'', superpost:'', coordpost:'', semaforos:{}, rojas:{}, bien:[], decisiones:[] });
+  S.activo = id; tab = 'datos'; guardar(); pintar();
+}
+function borrarProyecto(){
+  const p = act(); if (!confirm('¿Borrar «' + p.nombre + '»? (Haz un export antes si dudas)')) return;
+  S.proyectos = S.proyectos.filter(x => x.id !== p.id);
+  S.activo = S.proyectos.length ? S.proyectos[0].id : null; guardar(); pintar();
+}
+function exportar(){
+  const blob = new Blob([JSON.stringify(S, null, 1)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'SUPERVISION_BACKUP_' + hoyC() + '.json';
+  a.click();
+  S.ultExp = Date.now(); guardar();
+}
+function importar(inp){
+  const f = inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try {
+    const nuevo = JSON.parse(r.result);
+    if (!nuevo.proyectos) throw 0;
+    if (confirm('Importar reemplaza lo actual (' + S.proyectos.length + ' proyecto(s)) por la copia (' + nuevo.proyectos.length + '). ¿Seguir?')){ S = nuevo; guardar(); pintar(); }
+  } catch(e){ alert('Ese archivo no parece una copia válida.'); } };
+  r.readAsText(f);
+}
+arrancar();
+</script>
+</body>
+</html>
